@@ -9,12 +9,12 @@ jobs:
   displayName: "End-to-end Windows build & package"
   timeoutInMinutes: 0
   cancelTimeoutInMinutes: 300
+  condition: not(true)
 
   pool:
     vmImage: 'vs2017-win2016'
 
   steps:
-  
     - script: |
         choco install doxygen.install git-lfs.install
         git lfs install
@@ -121,7 +121,13 @@ jobs:
   pool:
     vmImage: 'Ubuntu-16.04'
 
+  variables:
+    CCACHE_DIR: $(Pipeline.Workspace)/ccache
+
   steps:
+    - checkout: self
+      persistCredentials: 'true'
+
     # Dependency manager
     - bash: |
         sudo apt-get update && sudo apt-get install -qq gcc-4.8 g++-4.8 make libgl-dev cmake python3-pip python-numpy dos2unix libxkbcommon-x11-0 doxygen
@@ -129,6 +135,11 @@ jobs:
         sudo apt-get install git-lfs
         git lfs install
       displayName: 'Install dependencies from Aptitude'
+
+    - bash: |
+        sudo apt-get install ccache -y    
+        echo "##vso[task.prependpath]/usr/lib/ccache"
+      displayName: Install ccache
 
     # Pull LFS
     - bash: |
@@ -153,12 +164,23 @@ jobs:
         ls -lt
       displayName: 'Moving LFS files to the appropriate location under bin'
 
+    - task: Cache@0
+      inputs:
+        key: "default"
+        path: $(CCACHE_DIR)
+      displayName: ccache
+
     # Configure and build superbuild
     - bash: |
         cd bin
         cmake -DCMAKE_INSTALL_PREFIX="./install/appdir/usr" -DQT_DOWNLOAD_FORCE=ON ..
         make -j2
       displayName: 'Configure and compile Superbuild'
+
+    - bash: |
+        du -sh $(CCACHE_DIR)
+        ccache -s
+      displayName: Show ccache size
 
     # Configure and build CaPTk
     - bash: |
@@ -168,12 +190,17 @@ jobs:
         #make install/strip
       displayName: 'Configure and compile CaPTk'
 
+    - bash: |
+        du -sh $(CCACHE_DIR)
+        ccache -s
+      displayName: Show ccache size
+
     # Check qt
     - bash: |
         cd bin
         ls -a
         ls ./qt/
-      displayName: 'Check qt'
+      displayName: 'Check qt'      
       
     # Check libra
     - bash: |
@@ -204,6 +231,7 @@ jobs:
         mv CaPTk_*_Installer.bin $(Build.ArtifactStagingDirectory)
         
       displayName: 'Set up environment variables for packager and build a package'
+      condition: not(true)
     
     #- script: |
     #    cd bin
@@ -216,6 +244,7 @@ jobs:
       inputs:
         pathtoPublish: '$(Build.ArtifactStagingDirectory)'
         artifactName: '$(Build.DefinitionName)_installer_Linux'
+      condition: not(true)
 
     - task: DownloadBuildArtifacts@0
       inputs:
@@ -223,16 +252,20 @@ jobs:
         downloadType: 'single'
         artifactName: '$(Build.DefinitionName)_installer_Linux'
         downloadPath: '$(System.ArtifactsDirectory)'
+      condition: not(true)
     
 - job: 'MacOSBuild'
   displayName: "End-to-end MacOS build & package"
   timeoutInMinutes: 0
   cancelTimeoutInMinutes: 300
+  condition: not(true)
 
   pool:
     vmImage: 'MacOS-10.13'
 
   steps:
+    - bash: exit 1
+
     - bash: |
         brew install make doxygen llvm
         #brew install caskroom/cask/mactex # latex is not used for documentation right now
