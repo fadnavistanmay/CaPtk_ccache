@@ -164,7 +164,7 @@ jobs:
         ls -lt
       displayName: 'Moving LFS files to the appropriate location under bin'
 
-    - task: Cache@0
+    - task: CacheBeta@0
       inputs:
         key: "default"
         path: $(CCACHE_DIR)
